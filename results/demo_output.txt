@@ -1,0 +1,44 @@
+AFTER RESET          | Mode=00 WL_En=0 BL_En=0 | WL_Sel=00000000 | BL_Sel=0000000000000000
+
+PROGRAM code 5 (00101) - expect WL_Sel bit 5 = 0 after the 5th pulse
+  pulse  S_in=0   | Mode=01 WL_En=1 BL_En=0 | WL_Sel=00000000 | BL_Sel=0000000000000000
+  pulse  S_in=0   | Mode=01 WL_En=1 BL_En=0 | WL_Sel=00000000 | BL_Sel=0000000000000000
+  pulse  S_in=1   | Mode=01 WL_En=1 BL_En=0 | WL_Sel=00000000 | BL_Sel=0000000000000000
+  pulse  S_in=0   | Mode=01 WL_En=1 BL_En=0 | WL_Sel=00000000 | BL_Sel=0000000000000000
+  pulse  S_in=1   | Mode=01 WL_En=1 BL_En=0 | WL_Sel=ffffffdf | BL_Sel=0000000000000000
+
+PROGRAM code 31 (11111) - expect WL_Sel bit 31 = 0 after the 5th pulse
+  pulse  S_in=1   | Mode=01 WL_En=1 BL_En=0 | WL_Sel=ffffffdf | BL_Sel=0000000000000000
+  pulse  S_in=1   | Mode=01 WL_En=1 BL_En=0 | WL_Sel=ffffffdf | BL_Sel=0000000000000000
+  pulse  S_in=1   | Mode=01 WL_En=1 BL_En=0 | WL_Sel=ffffffdf | BL_Sel=0000000000000000
+  pulse  S_in=1   | Mode=01 WL_En=1 BL_En=0 | WL_Sel=ffffffdf | BL_Sel=0000000000000000
+  pulse  S_in=1   | Mode=01 WL_En=1 BL_En=0 | WL_Sel=7fffffff | BL_Sel=0000000000000000
+
+IDLE                 | Mode=00 WL_En=0 BL_En=0 | WL_Sel=7fffffff | BL_Sel=0000000000000000
+
+ERASE code 0 (000000) - expect BL_Sel bit 0 = 0 after the 6th pulse
+  pulse  S_in=0   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=0000000000000000
+  pulse  S_in=0   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=0000000000000000
+  pulse  S_in=0   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=0000000000000000
+  pulse  S_in=0   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=0000000000000000
+  pulse  S_in=0   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=0000000000000000
+  pulse  S_in=0   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=fffffffffffffffe
+
+ERASE code 40 (101000) - expect BL_Sel bit 40 = 0 after the 6th pulse
+  pulse  S_in=1   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=fffffffffffffffe
+  pulse  S_in=0   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=fffffffffffffffe
+  pulse  S_in=1   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=fffffffffffffffe
+  pulse  S_in=0   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=fffffffffffffffe
+  pulse  S_in=0   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=fffffffffffffffe
+  pulse  S_in=0   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=fffffeffffffffff
+
+ERASE code 63 (111111) - expect BL_Sel bit 63 = 0 after the 6th pulse
+  pulse  S_in=1   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=fffffeffffffffff
+  pulse  S_in=1   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=fffffeffffffffff
+  pulse  S_in=1   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=fffffeffffffffff
+  pulse  S_in=1   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=fffffeffffffffff
+  pulse  S_in=1   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=fffffeffffffffff
+  pulse  S_in=1   | Mode=10 WL_En=0 BL_En=1 | WL_Sel=7fffffff | BL_Sel=7fffffffffffffff
+
+IDLE                 | Mode=00 WL_En=0 BL_En=0 | WL_Sel=7fffffff | BL_Sel=7fffffffffffffff
+

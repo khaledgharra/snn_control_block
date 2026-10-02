@@ -24,7 +24,7 @@
 //   Erase    : BL_Sel[N] = 0, all other BL_Sel = 1      (N = 0..63)
 // The selection is held until the next complete code.
 //
-// Design decisions where the slides leave it open (see README_STEPS.txt):
+// Design decisions where the slides leave it open (see README.md):
 //   * PE_Pulse is the ONLY clock - the block diagram has no system clock
 //     pad. So the "state" of the slide's state machine is Mode itself; there
 //     is no state register that would need a clock edge to follow Mode.
