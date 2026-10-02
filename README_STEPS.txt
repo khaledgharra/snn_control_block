@@ -5,21 +5,22 @@ slide 2 = "Main Control Block - State Machine").
 
 Files:
 - main_control_block.sv        RTL
-- tb_main_control_block.sv     self-checking testbench (169 checks)
+- tb_main_control_block.sv     self-checking testbench (126 checks)
 - control_syn.tcl              Design Compiler synthesis script
 - .synopsys_dc.setup           Tower 0.18um tsl18fs120 library setup
 - innovus/                     Innovus place & route scripts
 
 WHAT THE BLOCK DOES
 
-  Mode 00  Idle / Loop-Back  LB_SPn rising edge arms the receiver; the next
-                             5 PE_Pulse edges shift in code N;
-                             LB_en[N:0]=0, LB_en[31:N+1]=1
-  Mode 01  Program           every 5 PE_Pulse edges shift in code N;
-                             WL_Sel[N]=0, others 1; WL_Enable=1
-  Mode 10  Erase             every 6 PE_Pulse edges shift in code N (0-63);
-                             BL_Sel[N]=0, other 63 are 1; BL_Enable=1
-  Reset                      LB_en[15:0]=0, LB_en[31:16]=1, selects cleared
+  Mode 00  Idle     no action, selections are kept
+  Mode 01  Program  every 5 PE_Pulse edges shift in code N (0-31);
+                    WL_Sel[N]=0, others 1; WL_Enable=1
+  Mode 10  Erase    every 6 PE_Pulse edges shift in code N (0-63);
+                    BL_Sel[N]=0, other 63 are 1; BL_Enable=1
+  Reset             WL_Sel and BL_Sel cleared
+
+  Loop-back (LB_SPn input, LB_en output) is NOT implemented for now. The
+  version that had it is commit 7bc85a6.
 
   Bits arrive on S_in MSB first, one per PE_Pulse rising edge.
 
@@ -37,15 +38,13 @@ DESIGN DECISIONS NOT FIXED BY THE SLIDES (please confirm)
 7. A frame starts on the first PE_Pulse edge after Mode changes. If Mode
    leaves and returns to the same mode with no PE_Pulse edge in between, a
    half-received code is continued, not discarded.
-8. LB_SPn must not toggle close to a PE_Pulse rising edge (it is counted
-   in its own clock domain and read without a synchronizer).
-9. The Bias shift register / BCode[0:39] / Sd_in of Ctrl2 is not
+8. The Bias shift register / BCode[0:39] / Sd_in of Ctrl2 is not
    implemented - the state-machine slide does not describe it.
 
 SIMULATE (any machine with Icarus Verilog)
 
   iverilog -g2012 -o tb.vvp main_control_block.sv tb_main_control_block.sv
-  vvp tb.vvp          -> "=== ALL 169 CHECKS PASSED ==="
+  vvp tb.vvp          -> "=== ALL 126 CHECKS PASSED ==="
 
 SYNTHESIZE (lab machine)
 

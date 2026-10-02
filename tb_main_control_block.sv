@@ -9,10 +9,9 @@ module tb_main_control_block;
     logic        PE_Pulse = 1'b0;
     logic        rst_n    = 1'b1;
     logic [1:0]  Mode     = 2'b00;
-    logic        LB_SPn   = 1'b0;
     logic        S_in     = 1'b0;
 
-    logic [31:0] WL_Sel, LB_en;
+    logic [31:0] WL_Sel;
     logic [63:0] BL_Sel;
     logic        WL_Enable, WL_Zero, BL_Enable, BL_Zero;
 
@@ -37,7 +36,7 @@ module tb_main_control_block;
         #10;
     endtask
 
-    // Send a 5-bit code, MSB first
+    // Send a 5-bit program code, MSB first
     task automatic send_code(input logic [4:0] code);
         for (int i = 4; i >= 0; i--) pulse(code[i]);
     endtask
@@ -45,12 +44,6 @@ module tb_main_control_block;
     // Send a 6-bit erase code, MSB first
     task automatic send_code6(input logic [5:0] code);
         for (int i = 5; i >= 0; i--) pulse(code[i]);
-    endtask
-
-    task automatic lb_pulse();
-        #20 LB_SPn = 1'b1;
-        #20 LB_SPn = 1'b0;
-        #10;
     endtask
 
     function automatic logic [31:0] one_cold(input logic [4:0] n);
@@ -61,13 +54,7 @@ module tb_main_control_block;
         return ~(64'd1 << n);
     endfunction
 
-    function automatic logic [31:0] lb_mask(input logic [4:0] n);
-        logic [31:0] m;
-        for (int i = 0; i < 32; i++) m[i] = (i > n);
-        return m;
-    endfunction
-
-    logic [31:0] wl_hold, lb_hold;
+    logic [31:0] wl_hold;
     logic [63:0] bl_hold;
 
     initial begin
@@ -75,19 +62,17 @@ module tb_main_control_block;
         #5  rst_n = 1'b0;
         #45 rst_n = 1'b1;
         #10;
-        check("reset: LB_en",     LB_en, 32'hFFFF_0000);
         check("reset: WL_Sel",    WL_Sel, 32'h0);
-        check("reset: BL_Sel",    BL_Sel, 32'h0);
+        check("reset: BL_Sel",    BL_Sel, 64'h0);
         check("reset: WL_Enable", WL_Enable, 0);
         check("reset: BL_Enable", BL_Enable, 0);
         check("reset: WL_Zero",   WL_Zero, 0);
         check("reset: BL_Zero",   BL_Zero, 0);
 
-        // ---- Idle: PE pulses without arming do nothing ----
+        // ---- Idle: PE pulses do nothing ----
         send_code(5'd9);
-        check("idle: LB_en unchanged",  LB_en, 32'hFFFF_0000);
         check("idle: WL_Sel unchanged", WL_Sel, 32'h0);
-        check("idle: BL_Sel unchanged", BL_Sel, 32'h0);
+        check("idle: BL_Sel unchanged", BL_Sel, 64'h0);
 
         // ---- Program mode: every code, back to back ----
         Mode = 2'b01; #10;
@@ -97,8 +82,7 @@ module tb_main_control_block;
             send_code(n[4:0]);
             check($sformatf("program: WL_Sel code %0d", n), WL_Sel, one_cold(n[4:0]));
         end
-        check("program: BL_Sel unchanged", BL_Sel, 32'h0);
-        check("program: LB_en unchanged",  LB_en, 32'hFFFF_0000);
+        check("program: BL_Sel unchanged", BL_Sel, 64'h0);
 
         // Selection only changes after a COMPLETE 5-bit code
         wl_hold = WL_Sel;
@@ -111,6 +95,8 @@ module tb_main_control_block;
         wl_hold = WL_Sel;
         Mode = 2'b00; #10;
         check("idle: WL_Enable off", WL_Enable, 0);
+        check("idle: BL_Enable off", BL_Enable, 0);
+        send_code(5'd3);
         check("idle: WL_Sel kept",   WL_Sel, wl_hold);
 
         // ---- Erase mode ----
@@ -121,6 +107,7 @@ module tb_main_control_block;
             send_code6(n[5:0]);
             check($sformatf("erase: BL_Sel code %0d", n), BL_Sel, one_cold64(n[5:0]));
         end
+        check("erase: WL_Sel unchanged", WL_Sel, wl_hold);
 
         // Selection only changes after a COMPLETE 6-bit code (not after 5)
         bl_hold = BL_Sel;
@@ -128,8 +115,6 @@ module tb_main_control_block;
         check("erase: held after 5 of 6 bits", BL_Sel, bl_hold);
         pulse(1);                                   // completes 100101 = 37
         check("erase: applied on 6th bit", BL_Sel, one_cold64(6'd37));
-        check("erase: WL_Sel unchanged", WL_Sel, wl_hold);
-        check("erase: LB_en unchanged",  LB_en, 32'hFFFF_0000);
 
         // Program -> Erase directly re-aligns the frame on the mode change
         Mode = 2'b01; #10;
@@ -139,39 +124,13 @@ module tb_main_control_block;
         check("erase: realigned after mode change", BL_Sel, one_cold64(6'd44));
         bl_hold = BL_Sel;
 
-        // ---- Loop-back mode ----
+        // Erase -> Idle -> Program: a full code works after passing through idle
         Mode = 2'b00; #10;
-        for (int n = 0; n < 32; n++) begin
-            lb_pulse();
-            send_code(n[4:0]);
-            check($sformatf("loopback: LB_en code %0d", n), LB_en, lb_mask(n[4:0]));
-        end
-        check("loopback: WL_Enable off",    WL_Enable, 0);
-        check("loopback: BL_Enable off",    BL_Enable, 0);
-        check("loopback: WL_Sel unchanged", WL_Sel, wl_hold);
-        check("loopback: BL_Sel unchanged", BL_Sel, bl_hold);
-
-        // Mask is kept until the next LB_SPn pulse
-        lb_hold = LB_en;
-        send_code(5'd3);
-        check("loopback: ignored when not armed", LB_en, lb_hold);
-
-        // A new LB_SPn pulse in the middle of a frame restarts the frame
-        lb_pulse();
-        pulse(1); pulse(1);
-        lb_pulse();
-        send_code(5'd4);
-        check("loopback: re-arm restarts frame", LB_en, lb_mask(5'd4));
-
-        // LB_SPn while in program mode must not arm the loop-back receiver
-        lb_hold = LB_en;
+        pulse(0);
         Mode = 2'b01; #10;
-        lb_pulse();
         send_code(5'd12);
-        check("program: code after LB_SPn", WL_Sel, one_cold(5'd12));
-        Mode = 2'b00; #10;
-        send_code(5'd1);
-        check("loopback: not armed from program mode", LB_en, lb_hold);
+        check("program: code after idle", WL_Sel, one_cold(5'd12));
+        check("program: BL_Sel kept",     BL_Sel, bl_hold);
 
         // ---- Mode 11 (undefined): no action ----
         wl_hold = WL_Sel;
@@ -181,14 +140,12 @@ module tb_main_control_block;
         check("mode11: BL_Enable off",    BL_Enable, 0);
         check("mode11: WL_Sel unchanged", WL_Sel, wl_hold);
         check("mode11: BL_Sel unchanged", BL_Sel, bl_hold);
-        check("mode11: LB_en unchanged",  LB_en, lb_hold);
 
         // ---- Reset again from a configured state ----
         Mode = 2'b00;
         rst_n = 1'b0; #20 rst_n = 1'b1; #10;
-        check("re-reset: LB_en",  LB_en, 32'hFFFF_0000);
         check("re-reset: WL_Sel", WL_Sel, 32'h0);
-        check("re-reset: BL_Sel", BL_Sel, 32'h0);
+        check("re-reset: BL_Sel", BL_Sel, 64'h0);
 
         if (errors == 0) $display("=== ALL %0d CHECKS PASSED ===", checks);
         else             $display("=== %0d of %0d CHECKS FAILED ===", errors, checks);

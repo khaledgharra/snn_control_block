@@ -32,7 +32,7 @@ RUNNING FROM SCRATCH:
 NOTES:
 
 - No clock tree step: clockDesign is a "Limited Access" feature on the lab
-  licence (IMPSE-25) and fails. PE_Pulse drives its ~145 flip-flops as one
+  licence (IMPSE-25) and fails. PE_Pulse drives its ~110 flip-flops as one
   net, which is acceptable for this small block as a class exercise.
 - These scripts were adapted from the nbody_accelerator flow with the
   power-ring and pin-placement problems found there fixed, but they have

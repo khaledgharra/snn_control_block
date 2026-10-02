@@ -13,7 +13,6 @@ remove_design -all
 set DESIGN_NAME main_control_block
 set CLK_NAME    PE_Pulse
 set CLK_PERIOD  10
-set LB_CLK_NAME LB_SPn
 
 # Make includes searchable from the current folder
 set_app_var search_path [concat [list . [pwd]] $search_path]
@@ -34,17 +33,11 @@ link
 uniquify
 check_design
 
-# Clock constraints
-# PE_Pulse clocks all the shift registers and outputs.
+# Clock constraint - PE_Pulse clocks all the shift registers and outputs.
 create_clock -name $CLK_NAME -period $CLK_PERIOD -waveform {0 5} [get_ports $CLK_NAME]
 
-# LB_SPn clocks only the 2-bit loop-back event counter. It is unrelated to
-# PE_Pulse, so the two clocks are declared asynchronous to each other.
-create_clock -name $LB_CLK_NAME -period $CLK_PERIOD -waveform {0 5} [get_ports $LB_CLK_NAME]
-set_clock_groups -asynchronous -group $CLK_NAME -group $LB_CLK_NAME
-
 # Basic I/O constraints for backend/floorplan exercise
-set_input_delay  0 -clock $CLK_NAME [remove_from_collection [all_inputs] [get_ports [list $CLK_NAME $LB_CLK_NAME]]]
+set_input_delay  0 -clock $CLK_NAME [remove_from_collection [all_inputs] [get_ports $CLK_NAME]]
 set_output_delay 0 -clock $CLK_NAME [all_outputs]
 
 # Synthesis - same basic idea as the i2c backend lab
