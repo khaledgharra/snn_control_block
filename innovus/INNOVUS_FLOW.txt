@@ -1,0 +1,40 @@
+============================================================
+  main_control_block — Innovus Place & Route (core-only, no pad ring)
+============================================================
+
+Prerequisite: main_control_block_syn.v and control.sdc must exist in the
+repo root (produced by ../control_syn.tcl in Design Vision). Both are
+referenced by control.globals / mmmc.view using ../ paths, so run
+Innovus from inside this innovus/ folder.
+
+RUNNING FROM SCRATCH:
+
+  cd innovus
+  innovus &
+  (in Innovus console:)
+    source control.globals
+    init_design
+    source floorplan.tcl
+    placeDesign
+    optDesign -preCTS
+    setNanoRouteMode -drouteFixAntenna true
+    routeDesign
+    verify_drc
+    verify_connectivity
+    timeDesign -postRoute
+    report_area
+    report_power
+    saveDesign ./results/control_final.enc
+
+  To see the pin names: zoom into one edge of the block (right-drag a
+  small box). They only appear when zoomed in.
+
+NOTES:
+
+- No clock tree step: clockDesign is a "Limited Access" feature on the lab
+  licence (IMPSE-25) and fails. PE_Pulse drives its ~110 flip-flops as one
+  net, which is acceptable for this small block as a class exercise.
+- These scripts were adapted from the nbody_accelerator flow with the
+  power-ring and pin-placement problems found there fixed, but they have
+  NOT been run yet on this design.
+============================================================

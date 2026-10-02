@@ -1,0 +1,27 @@
+###############################################################
+#  Innovus Import Globals - main_control_block (core-only, no pad ring)
+#  Load this in: File -> Import Design -> Load
+###############################################################
+
+set defHierChar {/}
+set init_verilog {../main_control_block_syn.v}
+set init_top_cell {main_control_block}
+set init_mmmc_file {mmmc.view}
+set init_pwr_net {VDD}
+set init_gnd_net {VSS}
+set init_assign_buffer {1}
+set init_import_mode { -keepEmptyModule 0 -treatUndefinedCellAsBbox 0}
+set delaycal_input_transition_delay {120ps}
+set conf_in_tran_delay {120.0ps}
+set conf_ioOri {R0}
+set init_abstract_view {abstract}
+set init_layout_view {layout}
+set init_lef_file {/users/iit/cadence/tsl018b/lef/tsl18_6lm_tech.lef /users/iit/cadence/tsl018b/lef/tsl18fs120.lef}
+
+# No pad ring here (core-only block), so no pad LEF and no init_io_file -
+# I/O pins land directly on the core boundary from the RTL port list.
+set init_design_uniquify 1
+set load_netlist_ignore_undefined_cell 1
+set init_verilog_tolerate_port_mismatch 0
+set ::TimeLib::tsgMarkCellLatchConstructFlag 1
+set timing_enable_default_delay_arc 1
