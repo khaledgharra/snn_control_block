@@ -164,4 +164,4 @@ This writes `main_control_block_syn.v`, `control.sdc` and
   in between, a half-received code is continued, not discarded.
 - A loop-back mode (`LB_SPn` input, `LB_en` output) and the bias shift register
   are part of the wider chip plan and are not implemented here. An earlier
-  version with loop-back is in the git history (commit `7bc85a6`).
+  version with loop-back is in the git history (commit `6bbaebf`).
