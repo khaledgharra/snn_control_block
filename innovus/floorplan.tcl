@@ -6,7 +6,7 @@
 puts "=== STEP 1: Floorplan ==="
 # -r <aspect ratio> <utilization> <left> <bottom> <right> <top> core-to-die margins.
 # Square core, 40% utilization (small block - leaves boundary length for the
-# ~105 pins), 12um margin on each side for the power ring.
+# ~140 pins), 12um margin on each side for the power ring.
 floorPlan -site CoreSite -r 1.0 0.4 12 12 12 12
 
 puts "=== STEP 2: Place I/O pins on the boundary ==="
@@ -20,12 +20,13 @@ proc bus_pins {name msb} {
     return $pins
 }
 set left_pins   [concat {rst_n PE_Pulse S_in LB_SPn} [bus_pins Mode 1]]
-set top_pins    [concat {BL_Enable BL_Zero} [bus_pins BL_Sel 31]]
+set top_pins    [concat {BL_Enable BL_Zero} [bus_pins BL_Sel 63]]
 set right_pins  [concat {WL_Enable WL_Zero} [bus_pins WL_Sel 31]]
 set bottom_pins [bus_pins LB_en 31]
 
 editPin -side Left   -layer 3 -spreadType center -spacing 4.0 -unit MICRON -fixOverlap 1 -pin $left_pins
-editPin -side Top    -layer 2 -spreadType center -spacing 4.0 -unit MICRON -fixOverlap 1 -pin $top_pins
+# 66 pins on the top edge - tighter spacing so they fit.
+editPin -side Top    -layer 2 -spreadType center -spacing 2.0 -unit MICRON -fixOverlap 1 -pin $top_pins
 editPin -side Right  -layer 3 -spreadType center -spacing 4.0 -unit MICRON -fixOverlap 1 -pin $right_pins
 editPin -side Bottom -layer 2 -spreadType center -spacing 4.0 -unit MICRON -fixOverlap 1 -pin $bottom_pins
 

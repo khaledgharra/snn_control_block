@@ -11,16 +11,18 @@
 //                          rising edge of LB_SPn
 //   01  Program            5-bit code -> WL_Sel (one switch disabled),
 //                          WL_Enable asserted
-//   10  Erase              5-bit code -> BL_Sel (one switch disabled),
+//   10  Erase              6-bit code -> BL_Sel (one switch disabled),
 //                          BL_Enable asserted
 //   11  (undefined on the slide) treated as Idle
 //
 // Serial protocol: on each rising edge of PE_Pulse one bit of S_in is
-// shifted in, MSB first. After 5 bits the code N is applied:
-//   Program  : WL_Sel[N] = 0, all other WL_Sel = 1
-//   Erase    : BL_Sel[N] = 0, all other BL_Sel = 1
-//   Loop-Back: LB_en[N:0] = 0, LB_en[31:N+1] = 1
-// The selection is held until the next complete 5-bit code.
+// shifted in, MSB first. Program and Loop-Back codes are 5 bits; the Erase
+// code is 6 bits because there are 64 bit-line switches (32 positive +
+// 32 negative). After the last bit the code N is applied:
+//   Program  : WL_Sel[N] = 0, all other WL_Sel = 1      (N = 0..31)
+//   Erase    : BL_Sel[N] = 0, all other BL_Sel = 1      (N = 0..63)
+//   Loop-Back: LB_en[N:0] = 0, LB_en[31:N+1] = 1        (N = 0..31)
+// The selection is held until the next complete code.
 //
 // Design decisions where the slides leave it open (see README_STEPS.txt):
 //   * PE_Pulse is the ONLY clock - the block diagram has no system clock
@@ -29,14 +31,15 @@
 //     WL_Enable / BL_Enable are decoded straight from Mode for that reason.
 //   * rst_n (asynchronous, active-low) is added for the slide's
 //     "Reset / Initialization" box; it is not drawn as a pad on the diagram.
-//   * A new 5-bit frame starts on the first PE_Pulse edge after Mode changes
+//   * A new frame starts on the first PE_Pulse edge after Mode changes
 //     (program/erase) or after an LB_SPn rising edge (loop-back). That edge
 //     already carries the first (MSB) bit.
 //   * LB_SPn rising edges are counted in their own tiny clock domain
 //     (lb_evt) because LB_SPn may pulse while PE_Pulse is not running. It
 //     must not toggle close to a PE_Pulse rising edge.
-//   * BL_Sel is 32 bits, as on the state-machine slide (a 5-bit code can
-//     only address 32 switches). The block diagram labels it BL_Sel[0:63].
+//   * BL_Sel is 64 bits (block diagram: BL_Sel[0:63]) and the Erase code is
+//     6 bits. The state-machine slide still shows a 5-bit code and
+//     BL_Sel<31:0> for Erase; the 6-bit width was confirmed separately.
 //   * WL_Zero / BL_Zero are tied to 0 ("as defined, usually 0").
 //   * WL_Sel / BL_Sel reset to all-0 (every switch disabled = no action).
 //   * The Bias shift register / BCode[0:39] of Ctrl2 is not part of the
@@ -53,7 +56,7 @@ module main_control_block (
     output logic [31:0] WL_Sel,
     output logic        WL_Enable,
     output logic        WL_Zero,
-    output logic [31:0] BL_Sel,
+    output logic [63:0] BL_Sel,
     output logic        BL_Enable,
     output logic        BL_Zero,
     output logic [31:0] LB_en
@@ -85,17 +88,19 @@ module main_control_block (
     logic [1:0] lb_seen;       // lb_evt value already handled
     logic       lb_rx;         // loop-back frame in progress
     logic [2:0] bit_cnt;       // bits already received in the current frame
-    logic [4:0] wl_sr, bl_sr, lb_sr;
+    logic [4:0] wl_sr, lb_sr;
+    logic [5:0] bl_sr;         // erase code is 6 bits (64 BL switches)
 
     wire lb_arm = (lb_evt != lb_seen);
 
     // Code as it will be once the bit arriving on this edge is shifted in.
     wire [4:0] wl_code = {wl_sr[3:0], S_in};
-    wire [4:0] bl_code = {bl_sr[3:0], S_in};
+    wire [5:0] bl_code = {bl_sr[4:0], S_in};
     wire [4:0] lb_code = {lb_sr[3:0], S_in};
 
     wire frame_start = (Mode != mode_q);
-    wire last_bit    = !frame_start && (bit_cnt == 3'd4);
+    wire last_bit5   = !frame_start && (bit_cnt == 3'd4);   // 5-bit codes
+    wire last_bit6   = !frame_start && (bit_cnt == 3'd5);   // 6-bit erase code
 
     always_ff @(posedge PE_Pulse or negedge rst_n) begin
         if (!rst_n) begin
@@ -104,10 +109,10 @@ module main_control_block (
             lb_rx   <= 1'b0;
             bit_cnt <= 3'd0;
             wl_sr   <= 5'b0;
-            bl_sr   <= 5'b0;
+            bl_sr   <= 6'b0;
             lb_sr   <= 5'b0;
             WL_Sel  <= 32'h0000_0000;
-            BL_Sel  <= 32'h0000_0000;
+            BL_Sel  <= 64'h0;
             LB_en   <= 32'hFFFF_0000;   // LB_en[15:0]=0, LB_en[31:16]=1
         end else begin
             mode_q <= Mode;
@@ -117,7 +122,7 @@ module main_control_block (
                     lb_seen <= lb_evt;          // LB_SPn is ignored here
                     lb_rx   <= 1'b0;
                     wl_sr   <= wl_code;
-                    if (last_bit) begin
+                    if (last_bit5) begin
                         WL_Sel  <= ~(32'd1 << wl_code);
                         bit_cnt <= 3'd0;
                     end else begin
@@ -129,8 +134,8 @@ module main_control_block (
                     lb_seen <= lb_evt;
                     lb_rx   <= 1'b0;
                     bl_sr   <= bl_code;
-                    if (last_bit) begin
-                        BL_Sel  <= ~(32'd1 << bl_code);
+                    if (last_bit6) begin
+                        BL_Sel  <= ~(64'd1 << bl_code);
                         bit_cnt <= 3'd0;
                     end else begin
                         bit_cnt <= frame_start ? 3'd1 : bit_cnt + 3'd1;

@@ -12,7 +12,8 @@ module tb_main_control_block;
     logic        LB_SPn   = 1'b0;
     logic        S_in     = 1'b0;
 
-    logic [31:0] WL_Sel, BL_Sel, LB_en;
+    logic [31:0] WL_Sel, LB_en;
+    logic [63:0] BL_Sel;
     logic        WL_Enable, WL_Zero, BL_Enable, BL_Zero;
 
     main_control_block dut (.*);
@@ -20,7 +21,7 @@ module tb_main_control_block;
     int errors = 0;
     int checks = 0;
 
-    task automatic check(input string what, input logic [31:0] got, input logic [31:0] exp);
+    task automatic check(input string what, input logic [63:0] got, input logic [63:0] exp);
         checks++;
         if (got !== exp) begin
             errors++;
@@ -41,6 +42,11 @@ module tb_main_control_block;
         for (int i = 4; i >= 0; i--) pulse(code[i]);
     endtask
 
+    // Send a 6-bit erase code, MSB first
+    task automatic send_code6(input logic [5:0] code);
+        for (int i = 5; i >= 0; i--) pulse(code[i]);
+    endtask
+
     task automatic lb_pulse();
         #20 LB_SPn = 1'b1;
         #20 LB_SPn = 1'b0;
@@ -51,13 +57,18 @@ module tb_main_control_block;
         return ~(32'd1 << n);
     endfunction
 
+    function automatic logic [63:0] one_cold64(input logic [5:0] n);
+        return ~(64'd1 << n);
+    endfunction
+
     function automatic logic [31:0] lb_mask(input logic [4:0] n);
         logic [31:0] m;
         for (int i = 0; i < 32; i++) m[i] = (i > n);
         return m;
     endfunction
 
-    logic [31:0] wl_hold, bl_hold, lb_hold;
+    logic [31:0] wl_hold, lb_hold;
+    logic [63:0] bl_hold;
 
     initial begin
         // ---- Reset / Initialization ----
@@ -106,10 +117,17 @@ module tb_main_control_block;
         Mode = 2'b10; #10;
         check("erase: BL_Enable", BL_Enable, 1);
         check("erase: WL_Enable", WL_Enable, 0);
-        for (int n = 0; n < 32; n++) begin
-            send_code(n[4:0]);
-            check($sformatf("erase: BL_Sel code %0d", n), BL_Sel, one_cold(n[4:0]));
+        for (int n = 0; n < 64; n++) begin
+            send_code6(n[5:0]);
+            check($sformatf("erase: BL_Sel code %0d", n), BL_Sel, one_cold64(n[5:0]));
         end
+
+        // Selection only changes after a COMPLETE 6-bit code (not after 5)
+        bl_hold = BL_Sel;
+        pulse(1); pulse(0); pulse(0); pulse(1); pulse(0);
+        check("erase: held after 5 of 6 bits", BL_Sel, bl_hold);
+        pulse(1);                                   // completes 100101 = 37
+        check("erase: applied on 6th bit", BL_Sel, one_cold64(6'd37));
         check("erase: WL_Sel unchanged", WL_Sel, wl_hold);
         check("erase: LB_en unchanged",  LB_en, 32'hFFFF_0000);
 
@@ -117,8 +135,8 @@ module tb_main_control_block;
         Mode = 2'b01; #10;
         pulse(1); pulse(1);                         // partial program code
         Mode = 2'b10; #10;
-        send_code(5'd6);
-        check("erase: realigned after mode change", BL_Sel, one_cold(5'd6));
+        send_code6(6'd44);
+        check("erase: realigned after mode change", BL_Sel, one_cold64(6'd44));
         bl_hold = BL_Sel;
 
         // ---- Loop-back mode ----
