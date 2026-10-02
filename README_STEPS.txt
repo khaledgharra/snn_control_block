@@ -6,6 +6,7 @@ slide 2 = "Main Control Block - State Machine").
 Files:
 - main_control_block.sv        RTL
 - tb_main_control_block.sv     self-checking testbench (126 checks)
+- tb_demo.sv                   prints the outputs pulse by pulse
 - control_syn.tcl              Design Compiler synthesis script
 - .synopsys_dc.setup           Tower 0.18um tsl18fs120 library setup
 - innovus/                     Innovus place & route scripts
@@ -45,6 +46,11 @@ SIMULATE (any machine with Icarus Verilog)
 
   iverilog -g2012 -o tb.vvp main_control_block.sv tb_main_control_block.sv
   vvp tb.vvp          -> "=== ALL 126 CHECKS PASSED ==="
+
+  To SEE the outputs step by step (and try your own codes):
+
+  iverilog -g2012 -o demo.vvp main_control_block.sv tb_demo.sv
+  vvp demo.vvp
 
 SYNTHESIZE (lab machine)
 
